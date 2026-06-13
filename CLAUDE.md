@@ -18,7 +18,7 @@ implements the HamSCI client contract.
 ## Authors
 
 - Michael Hauan (AC0G, GitHub: mijahauan)
-- Repo: https://github.com/mijahauan/msk144-recorder
+- Repo: https://github.com/mijahauan/meteor-scatter
 
 ## Quick reference
 

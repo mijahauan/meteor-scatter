@@ -35,7 +35,7 @@ External binaries must be present first:
 Then:
 
 ```bash
-git clone https://github.com/mijahauan/msk144-recorder /opt/git/sigmond/msk144-recorder
+git clone https://github.com/mijahauan/meteor-scatter /opt/git/sigmond/msk144-recorder
 sudo /opt/git/sigmond/msk144-recorder/scripts/install.sh   # creates user, venv, config, units
 sudo msk144-recorder config edit                           # interactive wizard (whiptail) -- see below
 sudo systemctl start msk144-recorder@<radiod_id>
