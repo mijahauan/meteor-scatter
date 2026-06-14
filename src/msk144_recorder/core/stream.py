@@ -203,12 +203,28 @@ class ChannelSink:
     def _compute_initial_anchor(self, samples: np.ndarray, quality):
         """Return (anchor_utc, source) for the very first batch.
 
-        Preferred: rtp_to_wallclock — includes hf-timestd's chain delay
-        correction when authority is published.  Fallback: time.time()
-        adjusted to "UTC of first sample in this batch".  Either way,
-        this is the ONLY wall-clock read for the recorder's lifetime.
+        Preferred: rtp_to_wallclock (radiod's GPS/RTP timebase) plus the
+        hf-timestd §18 dynamic RTP→UTC offset from authority.json, applied
+        once here — the GPSDO-clocked RTP counter carries the cadence
+        thereafter.  This matches codar/wspr; previously msk144 applied
+        only ka9q's §8 chain-delay (via channel_info) and ignored the
+        dynamic offset.  Fallback: time.time() adjusted to "UTC of first
+        sample in this batch".  Either way, this is the ONLY wall-clock
+        read for the recorder's lifetime.
         """
         n = len(samples)
+        # §18 dynamic offset (seconds), 0.0 when hf-timestd is absent or
+        # has no usable offset (standalone).  Read once at anchor time.
+        offset_sec = 0.0
+        try:
+            snap = self._reader.read()
+            if snap is not None and snap.offset_usable:
+                offset_sec = snap.offset_seconds
+        except Exception as exc:                    # noqa: BLE001
+            logger.debug(
+                "%s %d Hz: authority read failed at anchor: %s",
+                self._mode.upper(), self._frequency_hz, exc,
+            )
         if self._channel_info is not None:
             try:
                 from ka9q import rtp_to_wallclock
@@ -216,9 +232,19 @@ class ChannelSink:
                 if first_rtp != 0:
                     batch_start_sample = quality.total_samples_delivered - n
                     rtp_ts = (first_rtp + batch_start_sample) & 0xFFFFFFFF
-                    utc = rtp_to_wallclock(rtp_ts, self._channel_info)
+                    # Offset-corrected hint for wrap disambiguation only
+                    # (±period/2 tolerance); the real correction is the
+                    # explicit add below.  See ka9q rtp_to_wallclock docs.
+                    utc = rtp_to_wallclock(
+                        rtp_ts, self._channel_info,
+                        wallclock_hint_sec=time.time() + offset_sec,
+                    )
                     if utc is not None:
-                        return utc, "rtp_to_wallclock"
+                        source = (
+                            "rtp_to_wallclock+authority"
+                            if offset_sec else "rtp_to_wallclock"
+                        )
+                        return utc + offset_sec, source
             except Exception as exc:                # noqa: BLE001
                 logger.warning(
                     "%s %d Hz: rtp_to_wallclock raised on anchor: %s",
