@@ -98,3 +98,11 @@ description  = "FT4/FT8 spot channels (per-mode freqs_hz)"
 per_instance = true
 parser_file  = "src/meteor_scatter/sigmond_tui.py"
 parser_attr  = "parse_receiver_channels"
+
+# --- Upload-readiness declaration (CONTRACT §20) --------------------------
+[[contract.upload]]
+destination  = "pskreporter.info"
+scope        = "instance"
+enable_flag  = "METEOR_SCATTER_USE_HS_UPLOADER"
+requires     = []
+register_url = "pskreporter.info (no account; uses the station callsign/grid)"
