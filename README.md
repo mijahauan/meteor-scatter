@@ -35,7 +35,7 @@ External binaries must be present first:
 Then:
 
 ```bash
-git clone https://github.com/mijahauan/meteor-scatter /opt/git/sigmond/meteor-scatter
+git clone https://github.com/HamSCI/meteor-scatter /opt/git/sigmond/meteor-scatter
 sudo /opt/git/sigmond/meteor-scatter/scripts/install.sh   # creates user, venv, config, units
 sudo meteor-scatter config edit                           # interactive wizard (whiptail) -- see below
 sudo systemctl start meteor-scatter@<radiod_id>
@@ -175,7 +175,7 @@ from* radiod, never specified by meteor-scatter.
 MIT. See [LICENSE](LICENSE). Author: Michael Hauan, AC0G.
 
 [ka9q]: https://github.com/ka9q/ka9q-radio
-[ka9qpy]: https://github.com/mijahauan/ka9q-python
+[ka9qpy]: https://github.com/HamSCI/ka9q-python
 [ft8_lib]: https://github.com/ka9q/ft8_lib
 [ftlib]: https://github.com/pjsg/ftlib-pskreporter
-[contract]: https://github.com/mijahauan/sigmond/blob/main/docs/CLIENT-CONTRACT.md
+[contract]: https://github.com/HamSCI/sigmond/blob/main/docs/CLIENT-CONTRACT.md

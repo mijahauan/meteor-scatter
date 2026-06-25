@@ -146,9 +146,9 @@ _ensure_sibling() {
     fi
 }
 
-_ensure_sibling callhash    https://github.com/mijahauan/callhash
-_ensure_sibling hs-uploader https://github.com/mijahauan/hs-uploader
-_ensure_sibling ka9q-python https://github.com/mijahauan/ka9q-python
+_ensure_sibling callhash    https://github.com/HamSCI/callhash
+_ensure_sibling hs-uploader https://github.com/HamSCI/hs-uploader
+_ensure_sibling ka9q-python https://github.com/HamSCI/ka9q-python
 
 # --- Phase 2: repo + venv ---
 if [[ ! -d "$REPO_SOURCE" ]]; then

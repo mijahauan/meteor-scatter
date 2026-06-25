@@ -1,5 +1,5 @@
 # meteor-scatter configuration
-# See https://github.com/mijahauan/meteor-scatter for documentation.
+# See https://github.com/HamSCI/meteor-scatter for documentation.
 #
 # Monitors meteor-scatter activity via WSJT-X's MSK144 protocol, decodes
 # heard "pings" with the bundled `jt9` binary, and uploads heard spots to

@@ -39,7 +39,7 @@ MSK144 hash and vice-versa.
 ## Authors
 
 - Michael Hauan (AC0G, GitHub: mijahauan)
-- Repo: https://github.com/mijahauan/meteor-scatter
+- Repo: https://github.com/HamSCI/meteor-scatter
 
 ## Quick reference
 

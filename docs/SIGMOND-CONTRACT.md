@@ -274,7 +274,7 @@ the top of the canonical doc.
 | 0.1.0 | 0.3 | Greenfield v0.3 reference. |
 | 0.1.0 (current) | 0.4 | §12 retrofit landed at [`b5eb378`][b5eb378] (config_path + SSRC uniqueness check). |
 
-[contract]: https://github.com/mijahauan/sigmond/blob/main/docs/CLIENT-CONTRACT.md
-[520e39f]: https://github.com/mijahauan/meteor-scatter/commit/520e39f
-[be4a050]: https://github.com/mijahauan/meteor-scatter/commit/be4a050
-[b5eb378]: https://github.com/mijahauan/meteor-scatter/commit/b5eb378
+[contract]: https://github.com/HamSCI/sigmond/blob/main/docs/CLIENT-CONTRACT.md
+[520e39f]: https://github.com/HamSCI/meteor-scatter/commit/520e39f
+[be4a050]: https://github.com/HamSCI/meteor-scatter/commit/be4a050
+[b5eb378]: https://github.com/HamSCI/meteor-scatter/commit/b5eb378
