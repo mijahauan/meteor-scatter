@@ -35,7 +35,7 @@ where N = (channels × slots-per-min).
 src/meteor_scatter/
   cli.py              # argparse, log-level resolution, stdout-cleanliness guard
   config.py           # TOML loader, defaults, radiod block resolution
-  contract.py         # inventory/validate JSON builders (sigmond contract v0.4)
+  contract.py         # inventory/validate JSON builders (sigmond contract v0.8)
   version.py          # GIT_INFO dict (sha, ref, dirty)
   daemon.py           # daemon entrypoint: load config, build MeteorScatterRecorder, run
   core/

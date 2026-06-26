@@ -116,7 +116,7 @@ Two delivery modes selected by `METEOR_SCATTER_DELIVERY_MODE`:
 src/meteor_scatter/
   cli.py              # argparse entry point + stdout-cleanliness guard
   config.py           # TOML loader, radiod block resolution, defaults
-  contract.py         # inventory/validate JSON builders (contract v0.7)
+  contract.py         # inventory/validate JSON builders (contract v0.8)
   configurator.py     # `config init`/`edit` — uses sigmond.wizard_dispatch
                       #   (CONTRACT v0.5 §14); whiptail wizard with stdin fallback
   version.py          # GIT_INFO dict for provenance
@@ -165,12 +165,12 @@ docstring — the codebase is well-documented at module level.
 - **PSWS station/instrument IDs are optional** — meteor-scatter doesn't
   require them; optional fields exist for operators who also run PSWS.
 
-## Client contract (v0.7)
+## Client contract (v0.8)
 
-meteor-scatter implements the HamSCI client contract at version 0.7
+meteor-scatter implements the HamSCI client contract at version 0.8
 (authoritative source: `/opt/git/sigmond/sigmond/docs/CLIENT-CONTRACT.md`).
-`contract.py` carries `CONTRACT_VERSION = "0.7"`; the `deploy.toml`
-manifest currently declares `0.6` and may lag behind the code.
+`contract.py` carries `CONTRACT_VERSION = "0.8"`; the `deploy.toml`
+manifest also declares `0.8`.
 
 Sections meteor-scatter implements:
 

@@ -1,6 +1,6 @@
 # Sigmond client contract conformance
 
-meteor-scatter implements the [HamSCI client contract][contract] (v0.4),
+meteor-scatter implements the [HamSCI client contract][contract] (v0.8),
 maintained in the sigmond repository at
 [`docs/CLIENT-CONTRACT.md`][contract]. It is the contract's
 **greenfield v0.3 reference implementation** (per §9) and surfaced
@@ -70,7 +70,7 @@ meteor-scatter version   --json
 {
   "client": "meteor-scatter",
   "version": "0.1.0",
-  "contract_version": "0.4",
+  "contract_version": "0.8",
   "config_path": "/etc/meteor-scatter/meteor-scatter-config.toml",
   "git": {"sha": "...", "short": "...", "ref": "main", "dirty": false},
   "log_paths": {

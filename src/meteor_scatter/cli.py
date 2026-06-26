@@ -1,8 +1,8 @@
 """meteor-scatter CLI entry point.
 
 Subcommands:
-    inventory   — contract v0.3 JSON inventory
-    validate    — contract v0.3 config validation
+    inventory   — contract v0.8 JSON inventory
+    validate    — contract v0.8 config validation
     version     — version + git block
     daemon      — long-running recorder (Phase 1)
     status      — health check (Phase 1)
@@ -105,11 +105,11 @@ def main():
             help="Override log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
         )
 
-    sub_inv = subparsers.add_parser("inventory", help="Contract v0.3 inventory")
+    sub_inv = subparsers.add_parser("inventory", help="Contract v0.8 inventory")
     sub_inv.add_argument("--json", action="store_true", default=True)
     _add_common(sub_inv)
 
-    sub_val = subparsers.add_parser("validate", help="Contract v0.3 validation")
+    sub_val = subparsers.add_parser("validate", help="Contract v0.8 validation")
     sub_val.add_argument("--json", action="store_true", default=True)
     _add_common(sub_val)
 

@@ -3,7 +3,7 @@
 FT4/FT8 spot recorder and PSK Reporter uploader for [ka9q-radio][ka9q].
 Replaces the native `ft8-record` / `ft8-decode` / `pskreporter@` shell
 pipeline with a coordinated Python client that follows the HamSCI
-sigmond [client contract][contract] (v0.6).
+sigmond [client contract][contract] (v0.8).
 
 ```
 radiod (ka9q-radio)

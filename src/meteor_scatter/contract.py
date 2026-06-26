@@ -1,4 +1,4 @@
-"""Client-contract v0.6 inventory and validate JSON builders."""
+"""Client-contract v0.8 inventory and validate JSON builders."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ CONTRACT_VERSION = "0.8"
 
 
 def build_inventory(config: dict, config_path: Path) -> dict:
-    """Build the inventory --json payload per contract v0.3."""
+    """Build the inventory --json payload per contract v0.8."""
     station = config.get("station", {})
     paths = config.get("paths", {})
     log_dir = paths.get("log_dir", "/var/log/meteor-scatter")
@@ -153,7 +153,7 @@ def build_inventory(config: dict, config_path: Path) -> dict:
 
 
 def build_validate(config: dict, config_path: Path | None = None) -> dict:
-    """Build the validate --json payload per contract v0.4.
+    """Build the validate --json payload per contract v0.8.
 
     §12.3: report the absolute path of the loaded config.
     """
