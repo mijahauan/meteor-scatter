@@ -380,40 +380,41 @@ def test_apply_writes_timing_section(tmp_path: Path) -> None:
 def test_apply_writes_radiod_blocks(tmp_path: Path) -> None:
     """The operator's full block list replaces the file's list."""
     rv = _apply({"radiod": [
-                    {"id": "new-rx888",  "radiod_status": "new-status.local"},
-                    {"id": "new2-rx888", "radiod_status": "new2-status.local"},
+                    {"status": "new-status.local"},
+                    {"status": "new2-status.local"},
                 ]}, tmp_path, existing=_FIXTURE_WITH_RADIOD)
     assert rv == 0
     with open(tmp_path / "c.toml", "rb") as f:
         loaded = tomllib.load(f)
-    ids = [b["id"] for b in loaded["radiod"]]
-    assert ids == ["new-rx888", "new2-rx888"]
+    statuses = [b["status"] for b in loaded["radiod"]]
+    assert statuses == ["new-status.local", "new2-status.local"]
     # The original 'test-rx888' block (and its freqs_hz) is GONE because
     # overlay-wins replaces the whole list.  This is the documented
     # contract; operators who want to preserve freqs_hz pass them
     # back in the payload, or use the wizard's "Edit raw TOML" path.
-    assert "test-rx888" not in ids
+    assert "test-status.local" not in statuses
 
 
 def test_apply_rejects_radiod_missing_id(tmp_path: Path, capsys) -> None:
+    # legacy `radiod_status` alone does not satisfy apply, which requires `status`
     rv = _apply({"radiod": [{"radiod_status": "x.local"}]}, tmp_path)
     assert rv == 2
-    assert "id is required" in capsys.readouterr().err.lower()
+    assert "status is required" in capsys.readouterr().err.lower()
 
 
 def test_apply_rejects_radiod_missing_status(tmp_path: Path, capsys) -> None:
     rv = _apply({"radiod": [{"id": "x"}]}, tmp_path)
     assert rv == 2
-    assert "radiod_status is required" in capsys.readouterr().err.lower()
+    assert "status is required" in capsys.readouterr().err.lower()
 
 
-def test_apply_rejects_radiod_duplicate_ids(tmp_path: Path, capsys) -> None:
+def test_apply_rejects_radiod_duplicate_status(tmp_path: Path, capsys) -> None:
     rv = _apply({"radiod": [
-                    {"id": "dup", "radiod_status": "a.local"},
-                    {"id": "dup", "radiod_status": "b.local"},
+                    {"status": "dup.local"},
+                    {"status": "dup.local"},
                 ]}, tmp_path)
     assert rv == 2
-    assert "duplicate ids" in capsys.readouterr().err.lower()
+    assert "duplicate status names" in capsys.readouterr().err.lower()
 
 
 def test_apply_rejects_radiod_not_a_list(tmp_path: Path, capsys) -> None:

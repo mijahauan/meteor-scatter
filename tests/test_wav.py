@@ -59,27 +59,27 @@ class WavWriterTests(unittest.TestCase):
             write_wav(path, np.zeros(100, dtype=np.float32), 12000)
             self.assertTrue(path.exists())
 
-    def test_rms_target_normalization(self):
-        """Verify RMS-target normalization (commit 50bd7d9): output RMS
-        targets ~2000 LSB (~-24 dBFS), leaving ~24 dB peak headroom.
+    def test_peak_normalization(self):
+        """Verify peak-normalization to -1 dBFS (wav.py): the per-slot
+        peak maps to ~29205 LSB regardless of input level, using the full
+        int16 range for low-level signals.
 
-        Peak-norm (commit 789064f, reverted) failed because one
-        transient set the peak and scaled every other sample into the
-        noise floor.  RMS is dominated by bulk signal so one impulse
-        barely moves it.
+        This superseded the earlier RMS-target normalization once f32
+        channels preserved the full dynamic range to this point (see the
+        _float32_to_int16 docstring in wav.py).
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "test.wav"
-            # 1 kHz sine at amplitude 0.1 → RMS = 0.1/sqrt(2) ≈ 0.0707
+            # 1 kHz sine at amplitude 0.1 → peak 0.1 → normalized to -1 dBFS
             sr = 12000
             t = np.arange(sr, dtype=np.float32) / sr
             samples = (0.1 * np.sin(2 * np.pi * 1000 * t)).astype(np.float32)
             write_wav(path, samples, sample_rate=sr)
 
             int16_vals = np.frombuffer(path.read_bytes()[44:], dtype=np.int16)
-            measured_rms = float(np.sqrt(np.mean(int16_vals.astype(np.float64) ** 2)))
-            # Allow ±5% drift around the 2000-LSB target.
-            self.assertAlmostEqual(measured_rms, 2000.0, delta=100.0)
+            measured_peak = int(np.abs(int16_vals).max())
+            # -1 dBFS target ≈ 29205 LSB, independent of input amplitude.
+            self.assertAlmostEqual(measured_peak, 29205, delta=50)
 
     def test_clip_at_int16_bounds(self):
         """Even with the RMS-target gain, MAX_GAIN can let extreme
