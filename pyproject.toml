@@ -41,7 +41,7 @@ testpaths = ["tests"]
 # ka9q-python listed here too because the existing convention on bee1 has it
 # editable in every consumer venv -- declaring it explicitly preserves that
 # behavior under uv sync (which would otherwise resolve >=3.14.0 from PyPI
-# as a non-editable wheel).  The base "ka9q-python>=3.14.0" dependency above
+# as a non-editable wheel).  The base "ka9q-python>=3.18.0" dependency above
 # still controls what published version PyPI consumers get.
 callhash    = { path = "../callhash",    editable = true }
 hs-uploader = { path = "../hs-uploader", editable = true }
