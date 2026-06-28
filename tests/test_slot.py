@@ -30,6 +30,13 @@ def _make_worker(tmpdir, *, mode="msk144", cadence=15.0, ring=None,
     clock = SlotClock(cadence_sec=cadence, sample_rate=SR, settle_sec=1.5)
     lock = threading.Lock()
     box = {"rtp": None}
+    # get_anchor_utc_now returns the current UTC of the fixed anchor_rtp.  In
+    # these tests there is no radiod slide, so it is just the anchored utc
+    # (None until anchored).  ``box['anchor_utc']`` lets a test simulate a slide.
+    def _anchor_utc_now():
+        if "anchor_utc" in box:
+            return box["anchor_utc"]
+        return clock._anchor_utc  # None until clock.anchor() is called
     worker = SlotWorker(
         ring=ring,
         mode=mode,
@@ -41,6 +48,7 @@ def _make_worker(tmpdir, *, mode="msk144", cadence=15.0, ring=None,
         clock=clock,
         get_latest_rtp=lambda: box["rtp"],
         clock_lock=lock,
+        get_anchor_utc_now=_anchor_utc_now,
         keep_wav=keep_wav,
     )
     return worker, clock, ring, box
@@ -87,6 +95,35 @@ class SlotHarvestTickTests(unittest.TestCase):
             worker._tick()
             self.assertEqual(
                 list((Path(tmpdir) / "msk144").glob("*.wav")), [])
+
+
+    def test_slot_window_follows_radiod_slide(self):
+        """The extracted RTP window must track radiod's RTP↔UTC slide: for the
+        SAME clean UTC boundary, a +1 s shift in the anchor's current UTC moves
+        the window 1 s (12000 samples) earlier — i.e. we follow radiod instead
+        of freezing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            worker, clock, ring, box = _make_worker(
+                tmpdir, keep_wav=True, decoder_path="/nonexistent/decode_msk144")
+            clock.anchor(rtp_timestamp=0, utc=900_000_000.0)
+            for i in range(80):                       # 40 s of audio
+                ring.push(np.ones(6000, dtype=np.float32), start_offset=i * 6000)
+            box["rtp"] = clock.rtp_of_offset(80 * 6000)   # latest_off = 480000
+            captured: list[int] = []
+            real = ring.extract_by_offset
+            ring.extract_by_offset = lambda off, n: (captured.append(off)
+                                                     or real(off, n))
+            # No slide: boundary 900000015 → start_off (15 s)*12000 = 180000.
+            worker._next_boundary_utc = 900_000_015.0
+            box["anchor_utc"] = 900_000_000.0
+            worker._tick()
+            self.assertIn(180000, captured)
+            # radiod's mapping of anchor_rtp slid +1.0 s → window 12000 earlier.
+            captured.clear()
+            worker._next_boundary_utc = 900_000_015.0
+            box["anchor_utc"] = 900_000_001.0
+            worker._tick()
+            self.assertIn(168000, captured)
 
 
 class DecodeTimeoutTests(unittest.TestCase):

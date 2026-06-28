@@ -108,6 +108,7 @@ class ChannelSink:
             clock=self._clock,
             get_latest_rtp=lambda: self._latest_rtp,
             clock_lock=self._clock_lock,
+            get_anchor_utc_now=self._anchor_utc_now,
             decoder_kind=decoder_kind,
             keep_wav=keep_wav,
             spool_spots=spool_spots,
@@ -123,9 +124,36 @@ class ChannelSink:
         self._channel_info = None
         # Diagnostic: how the current SlotClock anchor was derived.
         self._anchor_source: str = ""        # "rtp_to_utc[+authority]" | "wallclock_fallback"
-        # §18 authority reader — supplies the dynamic RTP→UTC offset at anchor
-        # time (0.0 standalone).
+        # The fixed RTP reference the ring + grid are keyed to (set once at the
+        # first anchor; reset only on a genuine stream restart).
+        self._anchor_rtp: Optional[int] = None
+        # §18 authority reader — supplies the dynamic RTP→UTC offset.
         self._reader = authority_reader if authority_reader is not None else AuthorityReader()
+
+    def _anchor_utc_now(self) -> Optional[float]:
+        """Current UTC of the FIXED ``_anchor_rtp`` per radiod's live
+        ``rtp_to_utc`` + §18 authority offset, or None if not yet anchored /
+        no channel_info.
+
+        This is the slide-follow hook.  ``_anchor_rtp`` never moves (so the
+        ring stays valid), but radiod's RTP↔UTC mapping slowly slides; the
+        SlotWorker calls this each tick and re-pins every slot's RTP window to
+        the *current* mapping, so the windows track the slide instead of
+        freezing.  It is a smooth, sub-sample nudge — NOT the per-batch
+        compare-and-flush re-anchor that stormed.
+        """
+        if self._anchor_rtp is None or self._channel_info is None:
+            return None
+        from ka9q import rtp_to_utc
+        from hamsci_dsp.timing import acquire_anchor_utc
+        a = acquire_anchor_utc(
+            first_rtp=self._anchor_rtp,
+            channel_info=self._channel_info,
+            rtp_to_utc=rtp_to_utc,
+            authority_reader=self._reader,
+            sample_rate=self._sample_rate,
+        )
+        return a.utc if a.rtp_referenced else None
 
     @property
     def mode(self) -> str:
@@ -203,6 +231,10 @@ class ChannelSink:
                     return
                 self._clock.anchor(batch_first_rtp, anchor_utc)
                 self._anchor_source = source
+                # The fixed RTP reference for the ring + the slide-follow
+                # re-pin (see _anchor_utc_now).  Set once; only changes on a
+                # genuine stream restart (on_stream_restored resets the clock).
+                self._anchor_rtp = batch_first_rtp
                 logger.info(
                     "%s %d Hz: SlotClock anchored via %s",
                     self._mode.upper(), self._frequency_hz, source,
@@ -260,6 +292,9 @@ class ChannelSink:
         self._ring.clear()
         self._latest_rtp = None
         self._anchor_source = ""
+        self._anchor_rtp = None
+        # New RTP reference space → the SlotWorker must re-seed its boundary.
+        self._slot_worker.reset_boundary()
         logger.info(
             "%s %d Hz: stream restored — re-anchoring on next batch",
             self._mode.upper(), self._frequency_hz,

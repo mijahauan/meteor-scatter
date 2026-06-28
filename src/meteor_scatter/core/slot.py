@@ -74,6 +74,7 @@ class SlotWorker:
         clock: SlotClock,
         get_latest_rtp: Callable[[], Optional[int]],
         clock_lock: threading.Lock,
+        get_anchor_utc_now: Callable[[], Optional[float]],
         keep_wav: bool = False,
         decoder_kind: str = DECODER_JT9,
         spool_spots: bool = False,
@@ -99,6 +100,15 @@ class SlotWorker:
         self._clock = clock
         self._get_latest_rtp = get_latest_rtp
         self._clock_lock = clock_lock
+        # Returns the CURRENT UTC of the (fixed) SlotClock anchor_rtp per
+        # radiod's live rtp_to_utc + authority offset.  We re-pin every slot's
+        # RTP window to this each tick, so the windows follow radiod's slow
+        # RTP↔UTC slide instead of freezing — without the per-batch re-anchor
+        # storm (this is a smooth, sub-sample nudge once the grid is running).
+        self._get_anchor_utc_now = get_anchor_utc_now
+        # Next clean cadence-multiple UTC boundary to emit (None until first).
+        self._next_boundary_utc: Optional[float] = None
+        self._sr = clock.sample_rate
         self._decoder_kind = decoder_kind
         self._keep_wav = keep_wav
         self._spool_spots = spool_spots
@@ -122,6 +132,12 @@ class SlotWorker:
         self.decodes_ok = 0
         self.decodes_fail = 0
         self.slots_empty = 0
+
+    def reset_boundary(self) -> None:
+        """Drop the cached next-boundary UTC so the worker re-seeds at the new
+        leading edge.  Called by ChannelSink.on_stream_restored after a genuine
+        radiod restart re-anchors the clock to a fresh RTP reference."""
+        self._next_boundary_utc = None
 
     def start(self) -> None:
         self._running = True
@@ -151,32 +167,51 @@ class SlotWorker:
         latest_rtp = self._get_latest_rtp()
         if latest_rtp is None:
             return
+        # Current UTC of the FIXED anchor_rtp, per radiod's live rtp_to_utc.
+        # This is what lets the grid FOLLOW radiod's RTP↔UTC slide: anchor_rtp
+        # never moves (so ring offsets stay valid), but its UTC — and thus the
+        # RTP offset of each clean cadence boundary — tracks radiod every tick.
+        anchor_utc_now = self._get_anchor_utc_now()
+        if anchor_utc_now is None:
+            return
 
-        # Harvest every epoch-aligned slot that has fully arrived.  The clock
-        # is shared with on_samples (which anchors / re-anchors it), so guard
-        # all clock state with the lock.
+        cadence_samples = self._clock.cadence_samples
+        settle_samples = self._clock.settle_samples
+        harvested: list[tuple[int, float]] = []
         with self._clock_lock:
             if not self._clock.anchored:
                 return
-            slots = self._clock.advance(latest_rtp)
-            # Resolve each slot's absolute ring offset while we hold the lock
-            # (offset_of_rtp reads the anchor).
-            resolved = [
-                (self._clock.offset_of_rtp(s.start_rtp), s) for s in slots
-            ]
+            latest_off = self._clock.offset_of_rtp(latest_rtp)
+            # Seed the next boundary at the first clean cadence multiple at/after
+            # the STREAM START (anchor_rtp is the first sample, so anchor_utc_now
+            # ~ the stream-start UTC).  A stream that starts mid-slot correctly
+            # begins at the next clean boundary, skipping the partial slot.
+            if self._next_boundary_utc is None:
+                self._next_boundary_utc = (
+                    math.ceil(anchor_utc_now / self._cadence_sec) * self._cadence_sec
+                )
+            # Harvest each completed clean slot, computing its RTP window offset
+            # from radiod's CURRENT mapping (anchor_utc_now) — not a frozen grid.
+            while True:
+                start_off = round(
+                    (self._next_boundary_utc - anchor_utc_now) * self._sr
+                )
+                if latest_off < start_off + cadence_samples + settle_samples:
+                    break
+                harvested.append((start_off, self._next_boundary_utc))
+                self._next_boundary_utc += self._cadence_sec
 
-        for start_off, slot in resolved:
-            samples = self._ring.extract_by_offset(start_off, slot.n_samples)
+        for start_off, start_utc in harvested:
+            samples = self._ring.extract_by_offset(start_off, cadence_samples)
             if samples is None:
                 self.slots_empty += 1
                 logger.warning(
-                    "%s %d Hz: slot %d at %.1f — insufficient samples, skipping",
-                    self._mode.upper(), self._frequency_hz,
-                    slot.index, slot.start_utc,
+                    "%s %d Hz: slot at %.1f — insufficient samples, skipping",
+                    self._mode.upper(), self._frequency_hz, start_utc,
                 )
                 continue
-            wav_path = self._write_spool_wav(samples, slot.start_utc)
-            self._fork_decoder(wav_path, slot.start_utc)
+            wav_path = self._write_spool_wav(samples, start_utc)
+            self._fork_decoder(wav_path, start_utc)
 
     def _write_spool_wav(self, samples, slot_start_utc: float) -> Path:
         # MSK144 slot boundaries are integer seconds (:00/:15/:30/:45), so
