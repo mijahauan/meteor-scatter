@@ -208,7 +208,7 @@ class BatcherFlushTests(unittest.TestCase):
         joined = "\n".join(cm.output)
         pat = re.compile(
             r"cycle UTC \S+ rx=radiod:bee1-status\.local mode=msk144 "
-            r"→ 3 spots in msk144\.spots "
+            r"→ 3 spots in psk\.spots "
             r"\(sqlite write \d+ ms\) bands=\[",
         )
         self.assertRegex(joined, pat)

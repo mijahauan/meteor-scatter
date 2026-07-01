@@ -8,7 +8,7 @@ on a dedicated writer thread.  Same shape as wspr-recorder's
 Why the indirection:
 
   * **Cycle-aligned log line.**  Emits a single ``cycle UTC HH:MM:SS
-    rx=<rx> → N spots in msk144.spots ...`` line per (cycle, source) so
+    rx=<rx> → N spots in psk.spots ...`` line per (cycle, source) so
     ``smd watch msk144`` can render per-receiver activity the same way
     ``smd watch wspr`` does, even when cross-rx dedup deletes
     "loser" siblings before a downstream observer can read them.
@@ -338,7 +338,7 @@ class MeteorScatterCycleBatcher:
         except Exception:
             logger.exception(
                 "msk144-cycle-batcher: writer factory raised — batcher "
-                "disabled, spots will not reach msk144.spots",
+                "disabled, spots will not reach psk.spots",
             )
             return
 
@@ -417,7 +417,7 @@ class MeteorScatterCycleBatcher:
         )
         rx_label = batch.rx_source or batch.radiod_id or "?"
         logger.info(
-            "cycle UTC %s rx=%s mode=%s → %d spots in msk144.spots "
+            "cycle UTC %s rx=%s mode=%s → %d spots in psk.spots "
             "(sqlite write %d ms)%s",
             cycle_iso, rx_label, mode, n, elapsed_ms,
             f" bands=[{bands_breakdown}]" if bands_breakdown else "",

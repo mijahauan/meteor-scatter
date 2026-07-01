@@ -11,9 +11,10 @@ MeteorScatterRecorder remains responsible for the process-global concerns
 (chrony settle gate, spot deposit to the SQLite sink via the cycle
 batcher, lifetime keepalive thread, stats aggregator, main loop,
 watchdog, signal handling).  Per-radiod provisioning lives in
-:class:`ReceiverManager`.  The wsprdaemon.org upload transport is
-deferred (Phase 3) — spots accumulate in ``msk144.spots`` until it
-is wired.
+:class:`ReceiverManager`.  Decoded MSK144 spots are deposited into the
+shared ``psk.spots`` sink (per-row ``mode="msk144"``) and delivered by the
+single-host uploader's psk→PSKReporter pipeline (the same stream psk-recorder
+uses; see :mod:`meteor_scatter.core.ch_tailer`).
 """
 
 from __future__ import annotations
@@ -42,7 +43,7 @@ from meteor_scatter.core.ch_tailer import ChTailer, _default_writer_factory
 from meteor_scatter.core.cycle_batcher import MeteorScatterCycleBatcher
 # MSK144 spots are attempted QSOs → uploaded to PSKReporter the same way
 # FT4/FT8 are (psk-recorder's HsPskReporterUploader).  The ChTailer
-# deposits rows into sigmond's local SQLite sink (msk144.spots); the
+# deposits rows into sigmond's local SQLite sink (psk.spots); the
 # uploader pumps that queue to pskreporter.info via the hs-uploader
 # PskReporterTcp transport (which maps mode "msk144" → "MSK144").
 from meteor_scatter.core.hs_uploader_shim import HsPskReporterUploader
@@ -286,7 +287,7 @@ class MeteorScatterRecorder:
     # inherit an ε_0 ≈ 0 system_time.  Without this gate, channels
     # whose SSRCs were created before chrony settled (or before a
     # radiod restart) carry stale anchors and produce slot
-    # timestamps wrong by minutes to hours — corrupting msk144.spots'
+    # timestamps wrong by minutes to hours — corrupting psk.spots'
     # UTC field silently.  Verified 2026-05-11.
     #
     # Defaults assume bare-metal hosts with hardware GPS PPS where
@@ -557,7 +558,7 @@ class MeteorScatterRecorder:
     def _start_uploaders(self) -> None:
         # MSK144 spots are attempted QSOs → published to PSKReporter the
         # same way FT4/FT8 are.  A single HsPskReporterUploader thread
-        # pumps the ``msk144.spots`` SQLite queue (filled by the ChTailer
+        # pumps the ``psk.spots`` SQLite queue (filled by the ChTailer
         # → MeteorScatterCycleBatcher path) to pskreporter.info via the
         # hs-uploader PskReporterTcp transport (mode "msk144" → "MSK144").
         # The SqliteSource is selected when sigmond's sink is present;
@@ -572,7 +573,7 @@ class MeteorScatterRecorder:
         if mode in ("deposit", "off", "none", "disabled"):
             logger.info(
                 "METEOR_SCATTER_DELIVERY_MODE=%s — PSKReporter uploader "
-                "disabled; MSK144 spots deposit to the msk144.spots sink only",
+                "disabled; MSK144 spots deposit to the psk.spots sink only",
                 mode,
             )
             return
@@ -851,7 +852,7 @@ class MeteorScatterRecorder:
                     "Error stopping ReceiverManager %s", rx.radiod_id,
                 )
         # Drain + stop the cycle batcher last so any spots already
-        # queued in its pending batches make it to msk144.spots before
+        # queued in its pending batches make it to psk.spots before
         # the process exits.
         if self._cycle_batcher is not None:
             try:
