@@ -98,3 +98,40 @@ description  = "FT4/FT8 spot channels (per-mode freqs_hz)"
 per_instance = true
 parser_file  = "src/meteor_scatter/sigmond_tui.py"
 parser_attr  = "parse_receiver_channels"
+
+# ---------------------------------------------------------------------------
+# Single-host uploader pipeline (Stage 6) — follows the psk-recorder pattern.
+# `smd admin uploader manifest` reads this [[hs_uploader.pipeline]] block and
+# renders it into /etc/hs-uploader/pipelines.toml. Source/transport mirror
+# meteor-scatter's in-process HsPskReporterUploader (core/hs_uploader_shim.py)
+# EXACTLY — database "msk144", mode IN ["msk144"], same select_columns — so the
+# derived watermark keys (sqlite:msk144.spots -> pskreporter-tcp:...:4739)
+# match the in-process slot and the daemon inherits its cursor with no re-ship.
+#
+# To fold onto the daemon on a host: set METEOR_SCATTER_DELIVERY_MODE=deposit
+# in the instance env (recorder becomes decode/sink-only, mirroring psk's
+# PSK_DELIVERY_PIPELINES=server-raw), then `smd admin uploader manifest
+# --write --enable`. Cross-rx dedup stays OFF here (single-rx); multi-rx hosts
+# add dedup_partition_by/dedup_order_by_desc exactly as the shim does under
+# METEOR_SCATTER_DIRECT_DEDUP.
+# ---------------------------------------------------------------------------
+
+# MSK144 spot rows -> pskreporter.info (TCP)
+[[hs_uploader.pipeline]]
+name = "meteor-pskreporter"
+batch_limit = 500
+[hs_uploader.pipeline.source]
+type = "sqlite"
+database = "msk144"
+table = "spots"
+accepted_schema_versions = [2]
+start_at = "now"
+delete_on_commit = false
+select_columns = ["time", "frequency", "mode", "snr_db", "tx_call", "grid", "score", "message", "rx_source", "frequency_bucket_hz"]
+extra_where = [["tx_call", "!=", ""], ["mode", "IN", ["msk144"]]]
+[hs_uploader.pipeline.transport]
+type = "pskreporter"
+decoding_software = "meteor-scatter/0.1 (radiod={radiod_status})"
+[hs_uploader.pipeline.retry]
+base = 2.0
+cap_sec = 300.0
